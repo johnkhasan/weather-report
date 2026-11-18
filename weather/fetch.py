@@ -29,6 +29,12 @@ def fetch_daily_weather(latitude, longitude, start_date, end_date):
         "daily": ",".join(DAILY_VARIABLES),
         "timezone": "auto",
     }
-    # TODO: send a GET request with a timeout (e.g. 60 seconds)
-    # TODO: call raise_for_status() so HTTP errors are not silently ignored
-    # TODO: wrap it in try/except requests.RequestException with a clear message
+    try:
+        # Without a timeout the program could wait forever if the server hangs
+        response = requests.get(ARCHIVE_URL, params=params, timeout=60)
+        # Turn HTTP errors (4xx/5xx) into exceptions instead of ignoring them
+        response.raise_for_status()
+    except requests.RequestException as error:
+        raise RuntimeError(f"Could not download weather data: {error}") from error
+
+    return response.json()
