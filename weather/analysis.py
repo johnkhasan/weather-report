@@ -1,5 +1,7 @@
 """Aggregations and climate statistics."""
 
+from weather.config import BASELINE_YEARS
+
 
 def add_date_parts(df):
     """Return a copy of ``df`` with ``year`` and ``month`` columns added.
@@ -50,3 +52,26 @@ def monthly_means(df):
     """
     daily = add_date_parts(df)
     return daily.groupby(["city", "year", "month"])["temp_mean"].mean().reset_index()
+
+
+def add_anomalies(yearly):
+    """Add each year's difference from the city's 1961–1990 average.
+
+    Parameters
+    ----------
+    yearly : pandas.DataFrame
+        Output of ``yearly_means``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The same table plus ``baseline`` and ``anomaly`` columns (°C).
+    """
+    start, end = BASELINE_YEARS
+    in_baseline = yearly["year"].between(start, end)
+    baseline = yearly[in_baseline].groupby("city")["temp_mean"].mean()
+
+    # map() looks up each row's city in the baseline Series
+    with_baseline = yearly.assign(baseline=yearly["city"].map(baseline))
+    with_baseline["anomaly"] = with_baseline["temp_mean"] - with_baseline["baseline"]
+    return with_baseline
