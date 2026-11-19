@@ -1,5 +1,8 @@
 """Aggregations and climate statistics."""
 
+import pandas as pd
+from scipy import stats
+
 from weather.config import BASELINE_YEARS
 
 
@@ -75,3 +78,29 @@ def add_anomalies(yearly):
     with_baseline = yearly.assign(baseline=yearly["city"].map(baseline))
     with_baseline["anomaly"] = with_baseline["temp_mean"] - with_baseline["baseline"]
     return with_baseline
+
+
+def warming_trend(yearly):
+    """Fit a straight line through yearly temperatures for each city.
+
+    Parameters
+    ----------
+    yearly : pandas.DataFrame
+        Output of ``yearly_means`` (or ``add_anomalies``).
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per city. Columns: city, trend_per_decade (°C per
+        10 years) and p_value.
+    """
+    rows = []
+    for city, data in yearly.groupby("city"):
+        result = stats.linregress(data["year"], data["temp_mean"])
+        rows.append({
+            "city": city,
+            # slope is °C per year; per decade is easier to read
+            "trend_per_decade": result.slope * 10,
+            "p_value": result.pvalue,
+        })
+    return pd.DataFrame(rows)
