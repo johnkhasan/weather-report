@@ -2,6 +2,9 @@
 
 import pandas as pd
 
+from weather.config import CITIES
+from weather.fetch import load_city
+
 # Short names are easier to read in the analysis and plotting code
 COLUMN_NAMES = {
     "time": "date",
@@ -42,3 +45,18 @@ def clean_weather(df, city):
         cleaned = cleaned.dropna()
 
     return cleaned
+
+
+def build_dataset():
+    """Load and clean every city, then stack them into one table.
+
+    The result is in long format: one row per city per day. This keeps
+    the same columns for every city, so ``groupby("city")`` works directly.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns: date, temp_mean, temp_max, precip, city.
+    """
+    cities = [clean_weather(load_city(name), name) for name in CITIES]
+    return pd.concat(cities, ignore_index=True)
