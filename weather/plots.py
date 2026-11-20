@@ -101,3 +101,34 @@ def plot_city_comparison(yearly):
 
     fig.tight_layout()
     return fig
+
+
+def plot_hot_days(hot_days):
+    """Line chart of hot days per year for all cities, smoothed with a 10-year mean.
+
+    Parameters
+    ----------
+    hot_days : pandas.DataFrame
+        Output of ``hot_days_per_year``.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    fig, ax = plt.subplots(figsize=(10, 4))
+
+    for city, data in hot_days.groupby("city"):
+        smoothed = data["hot_days"].rolling(10).mean()
+        color = CITY_COLORS.get(city, "gray")
+        ax.plot(data["year"], smoothed, color=color, linewidth=2, label=city)
+        ax.text(data["year"].iloc[-1] + 1, smoothed.iloc[-1], city,
+                color=color, va="center")
+
+    ax.set_title("Hot days per year (10-year rolling mean)")
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Days above the city's 95th percentile")
+    ax.legend(loc="upper left")
+    ax.spines[["top", "right"]].set_visible(False)
+
+    fig.tight_layout()
+    return fig
