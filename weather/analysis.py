@@ -1,5 +1,6 @@
 """Aggregations and climate statistics."""
 
+import numpy as np
 import pandas as pd
 from scipy import stats
 
@@ -104,3 +105,51 @@ def warming_trend(yearly):
             "p_value": result.pvalue,
         })
     return pd.DataFrame(rows)
+
+
+def hot_day_thresholds(df):
+    """Find each city's hot-day limit: the 95th percentile of baseline temp_max.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Daily data from ``build_dataset``.
+
+    Returns
+    -------
+    pandas.Series
+        Threshold in °C, indexed by city.
+    """
+    start, end = BASELINE_YEARS
+    baseline_days = df[df["date"].dt.year.between(start, end)]
+
+    thresholds = {}
+    for city, data in baseline_days.groupby("city"):
+        thresholds[city] = np.percentile(data["temp_max"], 95)
+    return pd.Series(thresholds)
+
+
+def hot_days_per_year(df):
+    """Count days per year hotter than the city's own baseline threshold.
+
+    A day is "hot" when its temp_max is above the 95th percentile of
+    1961–1990 for that city, so each city is judged by its own climate.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Daily data from ``build_dataset``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns: city, year, hot_days.
+    """
+    daily = add_date_parts(df)
+    threshold = daily["city"].map(hot_day_thresholds(df))
+    daily["is_hot"] = daily["temp_max"] > threshold
+
+    # Summing True/False counts the True values, and years with no hot
+    # days still appear with 0
+    hot_days = daily.groupby(["city", "year"])["is_hot"].sum()
+    return hot_days.reset_index(name="hot_days")
