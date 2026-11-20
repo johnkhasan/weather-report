@@ -1,5 +1,6 @@
 """Download historical daily weather from the Open-Meteo archive API."""
 
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -40,6 +41,11 @@ def fetch_daily_weather(latitude, longitude, start_date, end_date):
     try:
         # Without a timeout the program could wait forever if the server hangs
         response = requests.get(ARCHIVE_URL, params=params, timeout=60)
+        if response.status_code == 429:
+            # Open-Meteo limits requests per minute; wait for the limit to reset
+            print("API rate limit reached, waiting 60 seconds...")
+            time.sleep(60)
+            response = requests.get(ARCHIVE_URL, params=params, timeout=60)
         # Turn HTTP errors (4xx/5xx) into exceptions instead of ignoring them
         response.raise_for_status()
     except requests.RequestException as error:
